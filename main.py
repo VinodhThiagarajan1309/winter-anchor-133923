@@ -18,10 +18,14 @@
 import os
 import webapp2
 import jinja2
+import re
 
 template_dir = os.path.join(os.path.dirname(__file__),'templates')
 jinja_env = jinja2.Environment(loader = jinja2.FileSystemLoader(template_dir) , autoescape = True)
 
+USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+PASSWORD_RE = re.compile(r"^.{3,20}$")
+EMAIL_RE = re.compile(r"^[\S]+@[\S]+.[\S]+$")
 
 
 class Handler(webapp2.RequestHandler):
@@ -78,9 +82,63 @@ class ROT13Handler(Handler):
         #Convert the Array to String
         return ''.join(chr(i) for i in finalASCIIList)
 
+class UserSignUpHandler(Handler):
+    def get(self):
+        self.render("userSignUp.html")
+
+    def post(self):
+        username = self.request.get("username")
+        password = self.request.get("password")
+        verify = self.request.get("verify")
+        email = self.request.get("email")
+
+        usernameErr = False
+        passwordErr = False
+        verifyPassErr = False
+        verfiyErr = False
+        emailErr = False
+
+
+        if self.valid_username(username) is None:
+            usernameErr = True
+        if self.valid_password(password) is None:
+            passwordErr = True
+        if self.valid_password(verify) is None:
+            verfiyErr = True
+        if not self.valid_matching_password(password,verify):
+            verifyPassErr = True
+        if email:
+            if self.valid_email(email) is None:
+                emailErr = True
+
+        if usernameErr or passwordErr or verifyPassErr or verfiyErr or emailErr:
+            self.render("userSignUp.html" , username=username , email=email , usernameErr=usernameErr,
+            passwordErr=passwordErr , verifyPassErr=verifyPassErr,verfiyErr=verfiyErr,emailErr=emailErr)
+        else:
+            self.redirect("thanks?username="+str(username))
+  
+    def valid_username(self,username):
+        return USER_RE.match(username)
+
+    def valid_password(self,password):
+        return USER_RE.match(password)
+
+    def valid_matching_password(self,password,verify):
+        return password == verify
+
+    def valid_email(self,email):
+        return EMAIL_RE.match(email)
+        
+class ThanksHandler(Handler):
+    def get(self):
+        username = self.request.get("username")
+        self.render("thanks4SignUp.html" , username=username)
+
 
    
 app = webapp2.WSGIApplication([
     ('/', MainHandler),
-    ('/rot13' , ROT13Handler)
+    ('/rot13' , ROT13Handler),
+    ('/signUp' , UserSignUpHandler),
+    ('/thanks', ThanksHandler)
 ], debug=True)
